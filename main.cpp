@@ -39,11 +39,11 @@ int main() {
         while(std::cin.get() !='\n')
             continue;
         dir = ret_dir(d);
-        std::cout << std::flush;
+        system("clear");
         snake_update(dir, food_coords, snake, GameOn, snake_body);
         pole(snake, Food, food_coords, snake_body);
     }
-
+    system("clear");
     std::cout << "Game over!\n";
     return 0;
 }
@@ -153,8 +153,8 @@ void food_gen(Coords &eda)
 {
     std::random_device dev;
     std::mt19937 rng(dev());
-    std::uniform_int_distribution<std::mt19937::result_type> dist (0,20);
-    std::uniform_int_distribution<std::mt19937::result_type> dist2 (0,40);
+    std::uniform_int_distribution<std::mt19937::result_type> dist (0,19);
+    std::uniform_int_distribution<std::mt19937::result_type> dist2 (0,39);
     eda.x = dist(rng);
     eda.y = dist2(rng);
     if(eda.x == 10 && eda.y == 10)
