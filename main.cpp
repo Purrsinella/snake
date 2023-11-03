@@ -2,104 +2,145 @@
 #include <string>
 #include <random>
 #include <vector>
-#include <curses.h>
 #include <ncurses.h>
 
-struct Coords{
+struct Coords {
     int x;
     int y;
 };
 
 int height = 20;
 int width = 40;
+int start_y = 1;
+int start_x = 1;
 
-void food_gen(Coords &eda);
-enum DIRECTION {LEFT, UP, RIGHT, DOWN};
-void pole(std::string s, char f, Coords &eda, std::vector<Coords> &vec);
+enum DIRECTION {
+    LEFT, UP, RIGHT, DOWN
+};
+
+void title();
+void food_gen(Coords &eda, std::vector<Coords> &vec);
+void create_snake(std::vector<Coords> &s);
+void pole(WINDOW *w, Coords &eda, std::vector<Coords> &vec);
 DIRECTION ret_dir(char n);
-void snake_update(DIRECTION d, Coords &eda, std::string &s, bool &game, std::vector<Coords> &vec);
+void snake_update(WINDOW *w, DIRECTION d, Coords &eda, bool &game, std::vector<Coords> &vec);
+
 int main() {
-    bool  GameOn = true;
+    initscr();
+    title();
+    curs_set(0); // делает курсор невидимым
+    WINDOW *win = newwin(height, width, start_y, start_x);
+    box(win, 0, 0);
+    refresh();
+    wrefresh(win);
+    bool GameOn = true;
     DIRECTION dir;
-    Coords snake_head{10, 10};
-    Coords snake_tail{10, 11};
+    char d, td;
     std::vector<Coords> snake_body;
-    snake_body.push_back(snake_head);
-    snake_body.push_back(snake_tail);
+    create_snake(snake_body);
     Coords food_coords{};
-    food_gen(food_coords);
-    char Food = 'F';
-    std::string snake = "Xi";
-    pole(snake, Food, food_coords, snake_body);
-    char d;
+    food_gen(food_coords, snake_body);
+    pole(win, food_coords, snake_body);
+    keypad(win, true);
     while(GameOn)
     {
-        std::cout << "Enter smth.\n";
-        std::cin >> d;
-        while(std::cin.get() !='\n')
-            continue;
-        dir = ret_dir(d);
-        system("clear");
-        snake_update(dir, food_coords, snake, GameOn, snake_body);
-        pole(snake, Food, food_coords, snake_body);
+        noecho();
+        halfdelay(5);
+        d = static_cast<char>(wgetch(win));
+        if(d == 'a' || d == 'd' || d == 's' || d == 'w')
+        {
+            td = d;
+            dir = ret_dir(d);
+        } else
+            dir = ret_dir(td);
+
+        snake_update(win, dir, food_coords, GameOn, snake_body);
+        pole(win,food_coords, snake_body);
+        refresh();
     }
-    system("clear");
-    std::cout << "Game over!\n";
+
+    clear();
+    printw("Game over!\n");
+    wrefresh(win);
+    getch();
+    endwin();
     return 0;
 }
 
-void pole(std::string s, char f, Coords &eda, std::vector<Coords> &vec)
+void title()
 {
-
-    for (int i = 0; i < width + 2; i++)
-        std::cout << "-";
-    std::cout << std::endl;
-    for(int i = 0; i < height; ++i)
+    printw("Snake game\n");
+    printw("Press enter to start\n");
+    char c = getch();
+    while(c != '\n')
     {
-        int j;
-        for(j = 0; j <= width; ++j)
-        {
-            if (j == 0 || j == width)
-                std::cout << "|";
-            bool prTail = false; //я не знаю, для чего оно, но без него строка с пробелами печатается
-            for(int k = 0; k < vec.size(); ++k)
-            {
-                if(i == vec[k].x && j == vec[k].y) {
-                    std::cout << s[k];
-                    prTail = true;
-                }
-            }
-
-            if(i == eda.x && j == eda.y)
-                std::cout << f;
-            else if(!prTail)
-                std::cout << " ";
-        }
-        std::cout << std::endl;
+        printw("\nEnter\n");
+        c = getch();
     }
-    for (int i = 0; i < width + 2; i++)
-        std::cout << "-";
-    std::cout << std::endl;
+
+    clear();
+    return;
+}
+//используется только в самом начале для создания змейки
+void create_snake(std::vector<Coords> &s) {
+    Coords snake_head{10, 10};
+    Coords snake_tail{10, 11};
+    s.push_back(snake_head);
+    s.push_back(snake_tail);
+}
+
+void food_gen(Coords &eda, std::vector<Coords> &vec) {
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<std::mt19937::result_type> dist(1, 38);
+    std::uniform_int_distribution<std::mt19937::result_type> dist2(1, 18);
+    eda.x = dist(rng);
+    eda.y = dist2(rng);
+    for(int i = 0; i < vec.size(); ++i) {
+        if (eda.x == vec[i].x && eda.y == vec[i].y)
+            food_gen(eda, vec);
+    }
+}
+
+void pole(WINDOW *w, Coords &eda, std::vector<Coords> &vec)
+{
+    werase(w);
+    box(w, 0, 0);
+
+    mvwprintw(w, eda.y, eda.x, "F");
+
+    mvwprintw(w, vec[0].y, vec[0].x, "X");
+
+    for(int i = 1; i < vec.size()-1; ++i)
+    {
+        mvwprintw(w, vec[i].y, vec[i].x, "x");
+    }
+
+
+    mvwprintw(w, vec[vec.size()-1].y, vec[vec.size()-1].x, "i");
+
+    wrefresh(w);
 }
 
 DIRECTION ret_dir(char n)
 {
+    n = static_cast<char>(tolower(n));
     DIRECTION dir;
     switch (n) {
-        case 'A':
         case 'a':
+            //case KEY_LEFT:
             dir = LEFT;
             break;
-        case 'W':
         case 'w':
+            //case KEY_UP:
             dir = UP;
             break;
-        case 'D':
+            //case KEY_RIGHT:
         case 'd':
             dir = RIGHT;
             break;
         case 's':
-        case 'S':
+            //case KEY_DOWN:
             dir = DOWN;
             break;
         default:
@@ -110,23 +151,22 @@ DIRECTION ret_dir(char n)
     return dir;
 }
 
-void snake_update(DIRECTION d, Coords &eda, std::string &s, bool &game, std::vector<Coords> &vec)
+void snake_update(WINDOW *w, DIRECTION d, Coords &eda, bool &game, std::vector<Coords> &vec)
 {
     Coords temp = vec[0];
 
     if(d == UP)
-        --temp.x;
-    else if(d == LEFT)
         --temp.y;
+    else if(d == LEFT)
+        --temp.x;
     else if(d == RIGHT)
-        ++temp.y;
-    else if(d == DOWN)
         ++temp.x;
+    else if(d == DOWN)
+        ++temp.y;
 
-    if((temp.x == eda.x) && (temp.y == eda.y))
+    if((eda.x == temp.x) && (eda.y == temp.y))
     {
-        s.insert(s.end()-1,1, 'x');
-        food_gen(eda);
+        food_gen(eda, vec);
         vec.insert(vec.begin(), temp);
     }
     else
@@ -139,7 +179,7 @@ void snake_update(DIRECTION d, Coords &eda, std::string &s, bool &game, std::vec
         temp_vec.erase(temp_vec.begin(), temp_vec.end());
     }
 
-    if(temp.x == 0 || temp.y == 0 || temp.x == height || temp.y == width-1)
+    if(temp.x == 0 || temp.y == 0 || temp.x == width-1 || temp.y == height)
         game = false;
 
     for(int k = 1; k < vec.size(); ++k)
@@ -148,18 +188,3 @@ void snake_update(DIRECTION d, Coords &eda, std::string &s, bool &game, std::vec
             game = false;
     }
 }
-
-void food_gen(Coords &eda)
-{
-    std::random_device dev;
-    std::mt19937 rng(dev());
-    std::uniform_int_distribution<std::mt19937::result_type> dist (0,19);
-    std::uniform_int_distribution<std::mt19937::result_type> dist2 (0,39);
-    eda.x = dist(rng);
-    eda.y = dist2(rng);
-    if(eda.x == 10 && eda.y == 10)
-        food_gen(eda);
-}
-
-
-
