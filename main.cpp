@@ -18,16 +18,17 @@ enum DIRECTION {
     LEFT, UP, RIGHT, DOWN
 };
 
-void title();
+int title();
 void food_gen(Coords &eda, std::vector<Coords> &vec);
 void create_snake(std::vector<Coords> &s);
 void pole(WINDOW *w, Coords &eda, std::vector<Coords> &vec);
 DIRECTION ret_dir(char n);
 void snake_update(WINDOW *w, DIRECTION d, Coords &eda, bool &game, std::vector<Coords> &vec);
+void direction_check(char &direct, char &temp_direct);
 
 int main() {
     initscr();
-    title();
+    int difficulty = title();
     curs_set(0); // делает курсор невидимым
     WINDOW *win = newwin(height, width, start_y, start_x);
     box(win, 0, 0);
@@ -45,10 +46,11 @@ int main() {
     while(GameOn)
     {
         noecho();
-        halfdelay(5);
+        halfdelay(difficulty);
         d = static_cast<char>(wgetch(win));
         if(d == 'a' || d == 'd' || d == 's' || d == 'w')
         {
+            direction_check(d, td);
             td = d;
             dir = ret_dir(d);
         } else
@@ -67,10 +69,28 @@ int main() {
     return 0;
 }
 
-void title()
+int title()
 {
+    int dif;
     printw("Snake game\n");
-    printw("Press enter to start\n");
+    printw("Choose difficulty mode:\na. Easy\nb. Medium.\nc. Hard\n");
+    dif = getch();
+    switch (dif) {
+        case 'a':
+            dif = 10;
+            break;
+        case 'b':
+            dif = 4;
+            break;
+        case 'c':
+            dif = 2;
+            break;
+        default:
+            printw("Medium difficulty.\n");
+            dif = 4;
+            break;
+    }
+    printw("\nPress enter to start\n");
     char c = getch();
     while(c != '\n')
     {
@@ -79,7 +99,7 @@ void title()
     }
 
     clear();
-    return;
+    return dif;
 }
 //используется только в самом начале для создания змейки
 void create_snake(std::vector<Coords> &s) {
@@ -87,6 +107,13 @@ void create_snake(std::vector<Coords> &s) {
     Coords snake_tail{10, 11};
     s.push_back(snake_head);
     s.push_back(snake_tail);
+}
+
+//не дает змейке врезаться в себя, если направление меняется на противоположное
+void direction_check(char &direct, char &temp_direct)
+{
+    if((temp_direct== 'a' && direct == 'd') || (temp_direct == 'd' && direct == 'a') || (temp_direct == 'w' && direct == 's') || (temp_direct== 's' && direct == 'w'))
+        direct = temp_direct;
 }
 
 void food_gen(Coords &eda, std::vector<Coords> &vec) {
