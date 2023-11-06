@@ -4,6 +4,10 @@
 #include <vector>
 #include <ncurses.h>
 
+struct Player{
+    int score = 0;
+    int food_amount = 0;
+};
 struct Coords {
     int x;
     int y;
@@ -21,10 +25,11 @@ enum DIRECTION {
 int title();
 void food_gen(Coords &eda, std::vector<Coords> &vec);
 void create_snake(std::vector<Coords> &s);
-void pole(WINDOW *w, Coords &eda, std::vector<Coords> &vec);
+void pole(WINDOW *w, Coords &eda, std::vector<Coords> &vec, Player &p);
 DIRECTION ret_dir(char n);
-void snake_update(WINDOW *w, DIRECTION d, Coords &eda, bool &game, std::vector<Coords> &vec);
+void snake_update(WINDOW *w, DIRECTION d,  Player &p, Coords &eda, bool &game, std::vector<Coords> &vec, int &dif);
 void direction_check(char &direct, char &temp_direct);
+void difficulty_increase(Player &p, int &d);
 
 int main() {
     initscr();
@@ -34,6 +39,7 @@ int main() {
     box(win, 0, 0);
     refresh();
     wrefresh(win);
+    Player player;
     bool GameOn = true;
     DIRECTION dir;
     char d, td;
@@ -41,7 +47,7 @@ int main() {
     create_snake(snake_body);
     Coords food_coords{};
     food_gen(food_coords, snake_body);
-    pole(win, food_coords, snake_body);
+    pole(win, food_coords, snake_body, player);
     keypad(win, true);
     while(GameOn)
     {
@@ -56,14 +62,22 @@ int main() {
         } else
             dir = ret_dir(td);
 
-        snake_update(win, dir, food_coords, GameOn, snake_body);
-        pole(win,food_coords, snake_body);
+        snake_update(win, dir, player,food_coords, GameOn, snake_body, difficulty);
+        pole(win,food_coords, snake_body, player);
         refresh();
     }
 
-    clear();
-    printw("Game over!\n");
-    wrefresh(win);
+    char c;
+    while((c = getch()) != 'q')
+    {
+        clear();
+        printw("Game over!\n");
+        printw("Your score is %d!\n", player.score);
+        printw("You've eaten %d apples.\n", player.food_amount);
+        printw("Press q to quit.\n");
+        wrefresh(win);
+    }
+
     getch();
     endwin();
     return 0;
@@ -80,14 +94,14 @@ int title()
             dif = 10;
             break;
         case 'b':
-            dif = 4;
+            dif = 6;
             break;
         case 'c':
-            dif = 2;
+            dif = 4;
             break;
         default:
             printw("Medium difficulty.\n");
-            dif = 4;
+            dif = 6;
             break;
     }
     printw("\nPress enter to start\n");
@@ -129,7 +143,7 @@ void food_gen(Coords &eda, std::vector<Coords> &vec) {
     }
 }
 
-void pole(WINDOW *w, Coords &eda, std::vector<Coords> &vec)
+void pole(WINDOW *w, Coords &eda, std::vector<Coords> &vec, Player &p)
 {
     werase(w);
     box(w, 0, 0);
@@ -147,6 +161,9 @@ void pole(WINDOW *w, Coords &eda, std::vector<Coords> &vec)
     mvwprintw(w, vec[vec.size()-1].y, vec[vec.size()-1].x, "i");
 
     wrefresh(w);
+
+    mvprintw(21, 1, "You've eaten %d apples.\n", p.food_amount);
+    mvprintw(21, 30, "Your score is %d.\n", p.score);
 }
 
 DIRECTION ret_dir(char n)
@@ -155,19 +172,15 @@ DIRECTION ret_dir(char n)
     DIRECTION dir;
     switch (n) {
         case 'a':
-            //case KEY_LEFT:
             dir = LEFT;
             break;
         case 'w':
-            //case KEY_UP:
             dir = UP;
             break;
-            //case KEY_RIGHT:
         case 'd':
             dir = RIGHT;
             break;
         case 's':
-            //case KEY_DOWN:
             dir = DOWN;
             break;
         default:
@@ -178,7 +191,7 @@ DIRECTION ret_dir(char n)
     return dir;
 }
 
-void snake_update(WINDOW *w, DIRECTION d, Coords &eda, bool &game, std::vector<Coords> &vec)
+void snake_update(WINDOW *w, DIRECTION d, Player &p, Coords &eda, bool &game, std::vector<Coords> &vec, int &dif)
 {
     Coords temp = vec[0];
 
@@ -194,6 +207,12 @@ void snake_update(WINDOW *w, DIRECTION d, Coords &eda, bool &game, std::vector<C
     if((eda.x == temp.x) && (eda.y == temp.y))
     {
         food_gen(eda, vec);
+        ++p.food_amount;
+        difficulty_increase(p, dif);
+        if(eda.x > 35 || eda.x < 4 || eda.y < 4 || eda.y > 15)
+            p.score += 150;
+        else
+            p.score += 100;
         vec.insert(vec.begin(), temp);
     }
     else
@@ -214,4 +233,10 @@ void snake_update(WINDOW *w, DIRECTION d, Coords &eda, bool &game, std::vector<C
         if(vec[0].x == vec[k].x && vec[0].y == vec[k].y)
             game = false;
     }
+}
+
+void difficulty_increase(Player &p, int &d)
+{
+    if(p.food_amount > 0 && d > 1 && p.food_amount % 5 == 0)
+        --d;
 }
